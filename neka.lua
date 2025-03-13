@@ -19,12 +19,42 @@ local function highlightPlayer(player, enable)
     end
 end
 
+-- Funktion für Noclip (Fliegen)
+local function toggleNoclip(player, enable)
+    if player.Character then
+        local character = player.Character
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        
+        if humanoid then
+            if enable then
+                -- Aktiviert Noclip (Fliegen)
+                humanoid.PlatformStand = true -- Verhindert, dass der Charakter auf dem Boden bleibt
+                -- Setze den Charakter so, dass er durch Wände fliegen kann
+                local bodyVelocity = Instance.new("BodyVelocity")
+                bodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000) -- Sehr hohe Kraft
+                bodyVelocity.Velocity = Vector3.new(0, 0, 0) -- Keine Geschwindigkeit am Anfang
+                bodyVelocity.Parent = character.PrimaryPart
+            else
+                -- Deaktiviert Noclip
+                humanoid.PlatformStand = false
+                -- Entferne BodyVelocity, um den normalen Bewegungsmodus wiederherzustellen
+                local bodyVelocity = character.PrimaryPart:FindFirstChildOfClass("BodyVelocity")
+                if bodyVelocity then
+                    bodyVelocity:Destroy()
+                end
+            end
+        end
+    end
+end
+
 -- Wenn ein neuer Spieler hinzugefügt wird
-local function onPlayerAdded(player, highlightEnabled)
+local function onPlayerAdded(player, highlightEnabled, noclipEnabled)
     highlightPlayer(player, highlightEnabled) -- Highlight initialisieren
+    toggleNoclip(player, noclipEnabled) -- Noclip initialisieren
 
     player.CharacterAdded:Connect(function()
         highlightPlayer(player, highlightEnabled) -- Highlight bei Character-Neustart hinzufügen
+        toggleNoclip(player, noclipEnabled) -- Noclip bei Character-Neustart hinzufügen
     end)
 end
 
@@ -47,7 +77,7 @@ local function createToggleMenu()
     local toggleButton = Instance.new("TextButton")
     toggleButton.Size = UDim2.new(0, 180, 0, 40)
     toggleButton.Position = UDim2.new(0, 10, 0, 30)
-    toggleButton.Text = "Toggle Highlight"
+    toggleButton.Text = "Toggle Highlight & Noclip"
     toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     toggleButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
     toggleButton.BorderSizePixel = 0
@@ -56,15 +86,19 @@ local function createToggleMenu()
     return toggleButton
 end
 
--- Startwert für das Highlight (wird durch den Button gesteuert)
+-- Startwerte für Highlight und Noclip (wird durch den Button gesteuert)
 local highlightEnabled = true
+local noclipEnabled = false
 
--- Toggle-Funktion für das Highlight
-local function toggleHighlight()
+-- Toggle-Funktion für Highlight und Noclip
+local function toggleHighlightAndNoclip()
     highlightEnabled = not highlightEnabled
+    noclipEnabled = not noclipEnabled
+    
     -- Highlight für alle Spieler ein- oder ausschalten
     for _, player in pairs(game.Players:GetPlayers()) do
         highlightPlayer(player, highlightEnabled)
+        toggleNoclip(player, noclipEnabled)
     end
 end
 
@@ -72,14 +106,14 @@ end
 local toggleButton = createToggleMenu()
 
 -- Event-Listener für den Button
-toggleButton.MouseButton1Click:Connect(toggleHighlight)
+toggleButton.MouseButton1Click:Connect(toggleHighlightAndNoclip)
 
 -- Alle bestehenden Spieler zu Beginn behandeln
 for _, player in pairs(game.Players:GetPlayers()) do
-    onPlayerAdded(player, highlightEnabled)
+    onPlayerAdded(player, highlightEnabled, noclipEnabled)
 end
 
 -- Wenn ein neuer Spieler hinzukommt
 game.Players.PlayerAdded:Connect(function(player)
-    onPlayerAdded(player, highlightEnabled)
+    onPlayerAdded(player, highlightEnabled, noclipEnabled)
 end)
